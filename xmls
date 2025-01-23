@@ -1,0 +1,1322 @@
+servlet.xml 
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"	
+	xmlns:cache="http://www.springframework.org/schema/cache"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+	https://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/context
+	https://www.springframework.org/schema/context/spring-context.xsd
+	http://www.springframework.org/schema/task
+    https://www.springframework.org/schema/task/spring-task.xsd
+	http://www.springframework.org/schema/mvc 
+	https://www.springframework.org/schema/mvc/spring-mvc.xsd
+	http://www.springframework.org/schema/tx
+	https://www.springframework.org/schema/tx/spring-tx.xsd
+	http://www.springframework.org/schema/cache 
+    https://www.springframework.org/schema/cache/spring-cache.xsd">
+	
+	<context:component-scan base-package="sg.edu.nus.coi">
+    	<context:exclude-filter type="regex" expression="sg\.edu\.nus\.coi\.scheduler\..*"/>
+ 	</context:component-scan>
+
+	<mvc:annotation-driven/>
+   
+	<tx:annotation-driven/>
+	
+	<!--  <cache:annotation-driven />-->
+	<task:annotation-driven executor="taskExecutor"/>
+	<task:executor id="taskExecutor" pool-size="5" queue-capacity="5"/>
+	<bean id="asyncEmailServiceImpl"
+	   class="sg.edu.nus.coi.service.common.AsyncEmailServiceImpl">
+	</bean> 
+	
+	<!--  <bean id="schedulerBean"
+	   class="sg.edu.nus.coi.scheduler.Schedular">
+	</bean> 
+	
+	<task:scheduled-tasks scheduler="scheduledTasks">
+        <task:scheduled ref="schedulerBean" method="populateDataJob" cron="0 17 12 * * ?" />
+    </task:scheduled-tasks>
+
+    <task:scheduler id="scheduledTasks" />-->
+	
+	<mvc:resources location="/images/" mapping="/images/**"/>
+	<mvc:resources location="/styles/" mapping="/styles/**"/>
+	<mvc:resources location="/js/" mapping="/js/**"/>
+	<mvc:resources location="/css/" mapping="/css/**"/>
+	<mvc:resources location="/fonts/" mapping="/fonts/**"/>
+	<mvc:resources location="/docs/" mapping="/docs/**"/>
+	
+	<bean id="messageSource" class="org.springframework.context.support.ResourceBundleMessageSource">
+		<property name="basenames">
+			<list>
+				<value>errors</value>
+				<value>messages</value>					
+			</list>
+		</property>
+	</bean>	
+	
+	<bean id="filterMultipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver" >
+		<property name="maxUploadSize" value="-1" />
+	</bean>
+	
+	<bean class="org.springframework.web.servlet.view.XmlViewResolver">
+	     <property name="location">
+	        <value>/WEB-INF/spring-excel-views.xml</value>
+	     </property>
+	     <property name="order" value="0" />
+	</bean>
+
+	<bean id="viewResolver" class="org.springframework.web.servlet.view.UrlBasedViewResolver">
+		<property name="order" value="2"/>
+		<property name="viewClass" value="org.springframework.web.servlet.view.JstlView" />
+		<property name="prefix" value="/WEB-INF/jsp/" />
+		<property name="suffix" value=".jsp" />
+	</bean>
+	
+	<context:annotation-config />
+	
+	<!--  
+	
+	<bean id="cacheManager" class="org.springframework.cache.jcache.JCacheCacheManager">
+		<property name="cacheManager" ref="ehcache" />
+	</bean>
+	<bean id="ehcache"
+		class="org.springframework.cache.jcache.JCacheManagerFactoryBean">
+		<property name="cacheManagerUri" value="classpath:ehcache.xml" />
+	</bean>-->
+         
+	 <mvc:interceptors> <bean class="sg.edu.nus.coi.logger.MDCInterceptor" 
+		/> </mvc:interceptors>
+    
+    <!-- ServiceLocatorFactoryBean -->
+    <bean id="teamReviewHandlerFactory" 
+      class="org.springframework.beans.factory.config.ServiceLocatorFactoryBean">
+      <property name="serviceLocatorInterface" value="sg.edu.nus.coi.service.teamreview.TeamReviewHandlerFactory"/>
+    </bean>
+
+</beans>
+
+
+sercurity.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+  						https://www.springframework.org/schema/beans/spring-beans.xsd
+              			http://www.springframework.org/schema/security 
+              			https://www.springframework.org/schema/security/spring-security.xsd">
+
+	<!-- ======================== AUTHENTICATION CONFIGURATION ======================= -->
+	<security:http pattern="/API/**" auto-config="false" entry-point-ref="coiAuthenticationEntryPoint"  use-expressions="true">
+		<security:intercept-url pattern="/API/**" access="permitAll()" /> 
+
+		<security:custom-filter position="FORM_LOGIN_FILTER" ref="coiAuthenticationProcessingFilter" />
+		
+		<security:csrf disabled="true" />
+		
+		<security:headers defaults-disabled="true">
+			<security:hsts />
+          <security:cache-control />
+		  <security:content-security-policy policy-directives="img-src 'self' data: image/svg+xml; default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' 'unsafe-inline'"/>
+    	</security:headers> 
+	</security:http>
+	
+	<security:http pattern="/**" auto-config="false" entry-point-ref="coiAuthenticationEntryPoint"
+		use-expressions="true">
+		
+		<security:access-denied-handler error-page="/accessdenied.html" />
+		
+		<security:intercept-url pattern="/error.html" access="permitAll()" />
+		<security:intercept-url pattern="/accessdenied.html" access="permitAll()" />
+		<security:intercept-url pattern="/loginfailed.html" access="permitAll()" />
+		<security:intercept-url pattern="/maintenance.html" access="permitAll()" />
+		<security:intercept-url pattern="/timeout" access="permitAll()" />
+		<security:intercept-url pattern="/healthz/*" access="permitAll()" />
+	
+		<security:intercept-url pattern="/docs/**" access="permitAll()" />
+		<security:intercept-url pattern="/images/**" access="permitAll()" />
+		<security:intercept-url pattern="/styles/**" access="permitAll()" />
+		<security:intercept-url pattern="/js/**" access="permitAll()" />
+		<security:intercept-url pattern="/css/**" access="permitAll()" />
+		<security:intercept-url pattern="/fonts/**" access="permitAll()" />
+	
+		<security:intercept-url pattern="/"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/home"
+			access="isFullyAuthenticated()" />
+
+		<security:intercept-url pattern="/postLogin"
+			access="isFullyAuthenticated()" />
+
+		<!-- Declaration form -->
+		<security:intercept-url pattern="/declarationForm"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/declarationFormPreview"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/viewEditDeclarations"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/editDecl"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/viewDeclaration"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/submitDeclForm"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveDeclForm"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/deleteDeclaration"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/declarationFormPdf"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/downloadDeclWithAttachments"
+			access="isFullyAuthenticated()" />
+
+		<!-- Proxy form -->
+		<security:intercept-url pattern="/proxyForm"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/proxyFormPreview"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/viewEditProxyDeclarations"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/editProxyDecl"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/viewProxyDecl"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/submitProxyForm"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveProxyForm"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/deleteProxyDecl"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/proxyFormWPreviousDecl"
+			access="isFullyAuthenticated()" />
+
+		<security:intercept-url pattern="/downloadAttachment"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/proxyDeclarationFormPdf"
+			access="isFullyAuthenticated()" />
+
+		<!-- COI Team form -->
+		<security:intercept-url pattern="/coiTeamViewDeclarations"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/coiTeamReviewDeclaration"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/coiTeamEditDeclarations"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/coiTeamConfirmVoidDeclarations"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/sendBackToStaff"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchDeclaration"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/assignToStaff"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/submitCOIReview"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/initVoid"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchInitVoidedDeclarations"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/confirmVoidDeclaration"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/confirmVoid"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/showDifferences"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportCOITeamListingReport"
+			access="isFullyAuthenticated()" />
+
+		<!-- COI New Report -->
+		<security:intercept-url pattern="/annualDeclareReportNew"
+			access="isFullyAuthenticated()" />			
+		<security:intercept-url pattern="/showImportedStaffListNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/showExcludedStaffListNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/showDeclaredStaffListNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/showUndeclaredStaffListNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/statisticalReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchStatisticalReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportStatisticalReportNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/importedStaffReportNew"
+			access="isFullyAuthenticated()" />	
+		<security:intercept-url pattern="/pendingSubmissionReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchPendingSubmissionReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchPendingSubmissionReportPagingationNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportPendingSubmissionReportNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/proxyListingReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchProxyListingReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportProxyListingReportNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/proxyListingDetailReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchProxyListingDetailReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportProxyListingDetailReportNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/declarationHistoryReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchDeclarationHistoryNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportDeclarationHistoryNew"
+			access="isFullyAuthenticated()" />
+			
+			
+		<security:intercept-url pattern="/staffLevelStatisticReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchStaffLevelStatisticReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportStaffLevelStatisticReportNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/staffLevelDetailStatisticReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchStaffLevelDetailStatisticReportNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportStaffLevelDetailStatisticReportNew"
+			access="isFullyAuthenticated()" />
+			
+			
+		<security:intercept-url pattern="/nilDeclarationReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportNilDeclarationReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchNilDeclarationReport"
+			access="isFullyAuthenticated()" />
+			
+		
+		
+		<!-- COI Old Report -->
+		<security:intercept-url pattern="/declarationHistoryReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchDeclarationHistory"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportDeclarationHistory"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/statisticalReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchStatisticalReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportStatisticalReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/statisticalDetailReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchStatisticalDetailReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportStatisticalDetailReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/conflictAreaLevelStatisticReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchConflictAreaLevelStatisticReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportConflictAreaLevelStatisticReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/staffLevelStatisticReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchStaffLevelStatisticReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportStaffLevelStatisticReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/staffLevelDetailStatisticReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchStaffLevelDetailStatisticReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportStaffLevelDetailStatisticReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/proxyListingReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchProxyListingReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportProxyListingReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/proxyListingDetailReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchProxyListingDetailReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportProxyListingDetailReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/excludedFlaggedStaffReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchExcludedFlaggedStaffReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportExcludedFlaggedStaffReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/cwsnedReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchCWSNEDReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportCWSNEDReportReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/keywordSearchReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchKeywordSearchReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportKeywordSearchReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/pendingSubmissionReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchPendingSubmissionReport"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchPendingSubmissionReportPagingation"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportPendingSubmissionReport"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/importedStaffReport"
+			access="isFullyAuthenticated()" />
+		
+		
+		<security:intercept-url pattern="/annualDeclareReport"
+			access="isFullyAuthenticated()" />			
+		<security:intercept-url pattern="/showImportedStaffList"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/showExcludedStaffList"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/showDeclaredStaffList"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/showUndeclaredStaffList"
+			access="isFullyAuthenticated()" />
+		
+			
+		<security:intercept-url pattern="/getStaffListByPattern"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/getStaffListByNusnetId"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchExtStaffByPattern"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/getExtStaffOrStudentInfo"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/getStaffDetailsFromStaffHistory"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchProxyStaffDetailByName"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchProxyStaffDetailByNumber"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/getDepartmentList"
+			access="isFullyAuthenticated()" />
+			
+			
+
+		<!-- COI New Query functions -->
+		<security:intercept-url pattern="/viewOverallDeclarationForm"
+			access="isFullyAuthenticated()" />
+		
+		<security:intercept-url pattern="/queryDeclarationHistoryNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchQueryDeclarationHistoryNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportQueryDeclarationHistoryNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryDeclarationFormsNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchQueryDeclarationFormsNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportQueryDeclarationFormsNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryDeclaredEmployeeDataNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchDeclaredEmployeeDataNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportDeclaredEmployeeDataNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryDeclaredItemNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchDeclaredItemNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportDeclaredItemDataNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryExclusionFullTimeStaffNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchExclusionFullTimeStaffNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportExclusionFullTimeStaffDataNew"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/querySystemUsersNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchSystemUsersNew"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportSystemUsersDataNew"
+			access="isFullyAuthenticated()" />
+		
+		<!-- COI old Query functions -->	
+		<security:intercept-url pattern="/viewDeclarationFormNew"
+			access="isFullyAuthenticated()" />			
+		<security:intercept-url pattern="/loadDeclarationFormPdf"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/downloadDeclarations"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryDeclarationHistory"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchQueryDeclarationHistory"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportQueryDeclarationHistory"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryDeclarationForms"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchQueryDeclarationForms"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportQueryDeclarationForms"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryDeclaredEmployeeData"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchDeclaredEmployeeData"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportDeclaredEmployeeData"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryDeclaredItem"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchDeclaredItem"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportDeclaredItemData"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/queryExclusionFullTimeStaff"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchExclusionFullTimeStaff"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportExclusionFullTimeStaffData"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/querySystemUsers"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchSystemUsers"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/exportSystemUsersData"
+			access="isFullyAuthenticated()" />
+
+		<!-- COI Configuration -->
+		<security:intercept-url pattern="/emailTemplate"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/releaseEmailTemplate"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveEmailTemplate"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/getEmailTemplateDetail"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/staffExclusion"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveStaffExclusion"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/removeStaffExclusion"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/getStaffExclusionList"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/staffTestResult"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveStaffTestResult"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/removeStaffTestResult"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/getStaffTestResultList"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="importStaffTestResult"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/annualDeclarationExercise"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveAnnualDeclarationExercise"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/annualCOISetup"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveAnnualCOISetup"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/annualCOICutOffDate"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveAnnualCOICutOffDate"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/importAnnualCOIStaffDetail"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/showTriggerSMS"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/loadQualifiedList"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/searchQualifiedList"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/sendSMS"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/undeclaredComments"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveUndeclaredComments"
+			access="isFullyAuthenticated()" />
+	
+			
+		<security:intercept-url pattern="/showTriggerEmail"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/triggerEmail"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/showTriggerWorkflow"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/reTriggerInitWorkflow"
+			access="isFullyAuthenticated()" />
+		
+		<!-- Maintenance Setup -->
+		<security:intercept-url pattern="/maintenanceSetup"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveMaintenanceSetup"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/adhocDeclarationExercise"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveAdhocDeclarationExercise"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/adhocDeclarationExercise"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/saveAdhocDeclarationExercise"
+			access="isFullyAuthenticated()" />
+
+		<!-- COI Access Role -->
+		<security:intercept-url pattern="/grantRole"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/addUserAccess"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/removeUserAccess"
+			access="isFullyAuthenticated()" />
+
+		<!-- COI VIP Declare Access -->
+		<security:intercept-url pattern="/grantVIPDeclareAccess"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/removeVIPDeclareAccess"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/addVIPDeclareAccess"
+			access="isFullyAuthenticated()" />
+			
+		<security:intercept-url pattern="/showImportStaffDataForAdhocExercise"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/initStaffDataForAdhocExercise"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/importStaffDataForAdhocExercise"
+			access="isFullyAuthenticated()" />
+	
+			
+			
+
+		<security:intercept-url pattern="/reviewer"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/reviewerDeclaration"
+			access="isFullyAuthenticated()" />
+		<security:intercept-url pattern="/reviewerProxyDeclaration"
+			access="isFullyAuthenticated()" />
+
+		<security:intercept-url pattern="/proxyForm"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/proxyFormPreview"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/viewEditProxyDeclarations"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/editProxyDecl"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/viewProxyDecl"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/submitProxyForm"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/saveProxyForm"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/deleteProxyDecl"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/proxyFormWPreviousDecl"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+		<security:intercept-url pattern="/proxyDeclarationFormPdf"
+			access="hasAnyAuthority('ROLE_005','ROLE_008')" />
+
+		<security:intercept-url pattern="/coiTeamViewDeclarations"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/coiTeamEditDeclarations"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/coiTeamConfirmVoidDeclarations"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/coiTeamReviewDeclaration"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/sendBackToStaff"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchDeclaration"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/assignToStaff"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/submitCOIReview"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/initVoid"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchInitVoidedDeclarations"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/confirmVoidDeclaration"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/confirmProxyDeclaration"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/confirmVoid"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/showDifferences"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		<!-- Coi Team - Void -->
+		<security:intercept-url pattern="/coiTeamConfirmVoidDeclarations"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+		
+		<security:intercept-url pattern="/exportCOITeamListingReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002', 'ROLE_007','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/reviewer"
+			access="hasAnyAuthority('ROLE_006','ROLE_008')" />
+		<security:intercept-url pattern="/reviewerDeclaration"
+			access="hasAnyAuthority('ROLE_006','ROLE_008')" />
+		<security:intercept-url pattern="/reviewerProxyDeclaration"
+			access="hasAnyAuthority('ROLE_006','ROLE_008')" />
+
+		<!-- COI New Reports -->
+		<security:intercept-url pattern="/annualDeclareReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/showImportedStaffListNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />		
+		<security:intercept-url pattern="/showExcludedStaffListNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />		
+		<security:intercept-url pattern="/showDeclaredStaffListNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />		
+		<security:intercept-url pattern="/showUndeclaredStaffListNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/statisticalReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchStatisticalReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportStatisticalReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		
+		<security:intercept-url pattern="/importedStaffReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/pendingSubmissionReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchPendingSubmissionReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchPendingSubmissionReportPagingationNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportPendingSubmissionReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		
+		<security:intercept-url pattern="/proxyListingReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchProxyListingReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportProxyListingReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+			
+		<security:intercept-url pattern="/proxyListingDetailReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchProxyListingDetailReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportProxyListingDetailReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		
+		<security:intercept-url pattern="/declarationHistoryReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchDeclarationHistoryNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportDeclarationHistoryNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		
+		<security:intercept-url pattern="/staffLevelStatisticReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchStaffLevelStatisticReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportStaffLevelStatisticReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+			
+		
+		<security:intercept-url pattern="/staffLevelDetailStatisticReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchStaffLevelDetailStatisticReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportStaffLevelDetailStatisticReportNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		
+		<security:intercept-url pattern="/nilDeclarationReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchNilDeclarationReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/exportNilDeclarationReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		
+		
+		<!-- COI Old Reports -->
+		<security:intercept-url pattern="/declarationHistoryReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchDeclarationHistory"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportDeclarationHistory"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/statisticalReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchStatisticalReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportStatisticalReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/statisticalDetailReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchStatisticalDetailReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportStatisticalDetailReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/conflictAreaLevelStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchConflictAreaLevelStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportConflictAreaLevelStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/staffLevelStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchStaffLevelStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportStaffLevelStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		
+		<security:intercept-url pattern="/staffLevelDetailStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchStaffLevelDetailStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportStaffLevelDetailStatisticReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/proxyListingReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchProxyListingReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportProxyListingReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/proxyListingDetailReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchProxyListingDetailReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportProxyListingDetailReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/excludedFlaggedStaffReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchExcludedFlaggedStaffReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportExcludedFlaggedStaffReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/cwsnedReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchCWSNEDReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportCWSNEDReportReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/keywordSearchReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchKeywordSearchReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportKeywordSearchReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+
+
+		<security:intercept-url pattern="/pendingSubmissionReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchPendingSubmissionReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchPendingSubmissionReportPagingation"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportPendingSubmissionReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />	
+			
+		
+		<security:intercept-url pattern="/importedStaffReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/annualDeclareReport"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/showImportedStaffList"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />		
+		<security:intercept-url pattern="/showExcludedStaffList"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />		
+		<security:intercept-url pattern="/showDeclaredStaffList"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />		
+		<security:intercept-url pattern="/showUndeclaredStaffList"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+
+		<security:intercept-url pattern="/getStaffListByPattern"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/getStaffListByNusnetId"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchExtStaffByPattern"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/getExtStaffOrStudentInfo"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/getStaffDetailsFromStaffHistory"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchProxyStaffDetailByName"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/searchProxyStaffDetailByNumber"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+		<security:intercept-url pattern="/getDepartmentList"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020','ROLE_021','ROLE_022')" />
+
+		<!-- COI New Query -->
+		<security:intercept-url pattern="/viewOverallDeclarationForm"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		
+		<security:intercept-url pattern="/queryDeclarationHistoryNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchQueryDeclarationHistoryNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportQueryDeclarationHistoryNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryDeclarationFormsNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchQueryDeclarationFormsNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportQueryDeclarationFormsNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryDeclaredEmployeeDataNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchDeclaredEmployeeDataNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportDeclaredEmployeeDataNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryDeclaredItemNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchDeclaredItemNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportDeclaredItemDataNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryExclusionFullTimeStaffNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchExclusionFullTimeStaffNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportExclusionFullTimeStaffDataNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/querySystemUsersNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchSystemUsersNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportSystemUsersDataNew"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		
+		
+		
+		<!-- COI Query -->
+		<security:intercept-url pattern="/viewDeclarationForm"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008','ROLE_020')" />
+			
+		<security:intercept-url pattern="/loadDeclarationFormPdf"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/downloadDeclarations"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+				
+		<security:intercept-url pattern="/queryDeclarationHistory"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchQueryDeclarationHistory"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportQueryDeclarationHistory"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryDeclarationForms"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchQueryDeclarationForms"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportQueryDeclarationForms"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryDeclaredEmployeeData"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchDeclaredEmployeeData"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportDeclaredEmployeeData"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryDeclaredItem"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchDeclaredItem"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportDeclaredItemData"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/queryExclusionFullTimeStaff"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchExclusionFullTimeStaff"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchExclusionFullTimeStaff"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+			
+		<security:intercept-url pattern="/querySystemUsers"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/searchSystemUsers"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+		<security:intercept-url pattern="/exportSystemUsersData"
+			access="hasAnyAuthority('ROLE_001', 'ROLE_002','ROLE_003','ROLE_004','ROLE_010','ROLE_011','ROLE_007','ROLE_009','ROLE_008')" />
+
+		
+	<!-- COI Configuration -->
+		<security:intercept-url pattern="/emailTemplate"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/releaseEmailTemplate"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveEmailTemplate"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/getEmailTemplateDetail"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/staffExclusion"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveStaffExclusion"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/removeStaffExclusion"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/getStaffExclusionList"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/staffTestResult"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveStaffTestResult"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/removeStaffTestResult"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/getStaffTestResultList"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/importStaffTestResult"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/annualDeclarationExercise"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveAnnualDeclarationExercise"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/annualCOISetup"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveAnnualCOISetup"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/annualCOICutOffDate"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveAnnualCOICutOffDate"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/importAnnualCOIStaffDetail"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/undeclaredComments"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveUndeclaredComments"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/showTriggerEmail"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/triggerEmail"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/showTriggerWorkflow"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/reTriggerInitWorkflow"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+			
+		<security:intercept-url pattern="/showTriggerSMS"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/searchQualifiedList"
+			access="hasAnyAuthority('ROLE_008')" />	
+		<security:intercept-url pattern="/exportQualifiedList"
+			access="hasAnyAuthority('ROLE_008')" />	
+		<security:intercept-url pattern="/loadQualifiedList"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/sendSMS"
+			access="hasAnyAuthority('ROLE_008')" />	
+		<security:intercept-url pattern="/importSMSResponses"
+			access="hasAnyAuthority('ROLE_008')" />			
+		<security:intercept-url pattern="/loadIntoCOIS"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/sendEmailNotification"
+			access="hasAnyAuthority('ROLE_008')" />	
+		
+			
+			
+		<!-- Maintenance Setup -->
+		<security:intercept-url pattern="/maintenanceSetup"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveMaintenanceSetup"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/adhocDeclarationExercise"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/saveAdhocDeclarationExercise"
+			access="hasAnyAuthority('ROLE_008')" />
+		
+		<security:intercept-url pattern="/showImportStaffDataForAdhocExercise"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/initStaffDataForAdhocExercise"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/importStaffDataForAdhocExercise"
+			access="hasAnyAuthority('ROLE_008')" />
+
+		<!-- COI Access -->
+		<security:intercept-url pattern="/grantRole"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/addUserAccess"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/removeUserAccess"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<!-- COI VIP Declare Access -->
+		<security:intercept-url pattern="/grantVIPDeclareAccess"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/removeVIPDeclareAccess"
+			access="hasAnyAuthority('ROLE_008')" />
+		<security:intercept-url pattern="/addVIPDeclareAccess"
+			access="hasAnyAuthority('ROLE_008')" />
+			
+		<security:intercept-url pattern="/**"
+			access="isFullyAuthenticated()" /> 
+	
+		<security:session-management
+			session-fixation-protection="newSession" invalid-session-url="/timeout" />
+
+		<security:custom-filter position="FORM_LOGIN_FILTER"
+			ref="coiAuthenticationProcessingFilter" />
+		<security:request-cache ref="nullRequestCache" /> 
+		
+		<security:csrf />
+		
+		<security:headers defaults-disabled="true">
+			<security:hsts />
+          <security:cache-control />
+          <security:content-security-policy policy-directives="img-src 'self' data: image/svg+xml; default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval';object-src 'none'; base-uri 'none'; font-src 'self' 'unsafe-inline'"/>
+		  <!-- <security:content-security-policy policy-directives="img-src 'self' data: image/svg+xml; default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' 'unsafe-inline'"/> -->
+    	</security:headers> 
+		
+	</security:http>
+
+	<bean id="nullRequestCache"
+		class="org.springframework.security.web.savedrequest.NullRequestCache" /> 
+
+	<security:authentication-manager alias="authenticationManager">
+		<security:authentication-provider
+			ref='coiSharedComponentAuthenticator' />
+	</security:authentication-manager>
+
+	<bean id="coiAuthenticationEntryPoint" class="sg.edu.nus.coi.security.COIAuthenticationEntryPoint" />
+
+	<bean id="accessDeniedHandler"
+		class="org.springframework.security.web.access.AccessDeniedHandlerImpl">
+		<property name="errorPage" value="/accessDenied.html" />
+	</bean>
+
+	<bean id="coiSharedComponentAuthenticator" class="sg.edu.nus.coi.security.COISharedComponentAuthenticator" />
+
+	<bean id="coiAuthenticationProcessingFilter"
+		class="sg.edu.nus.coi.security.COIAuthenticationProcessingFilter">
+		<property name="authenticationManager" ref="authenticationManager" />
+		<property name="authenticationSuccessHandler">
+			<bean id="customAuthenticationSuccessHandler" class="sg.edu.nus.coi.security.COIAuthenticationSuccessHandler" />
+		</property>
+		<property name="authenticationFailureHandler">
+			<bean id="customAuthenticationFailureHandler" class="sg.edu.nus.coi.security.COIAuthenticationFailureHandler" />
+		</property>
+	</bean>
+
+</beans>		
+
+datasource.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jee="http://www.springframework.org/schema/jee"
+	xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        https://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        https://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/jee
+		https://www.springframework.org/schema/jee/spring-jee.xsd">
+		
+<context:component-scan base-package="sg.edu.nus.coi" />
+
+  	<jee:jndi-lookup id="dataSource" jndi-name="jdbc/PRJCOIS" />
+  	<!--  <jee:jndi-lookup id="dataSource2" jndi-name="jdbc/PRJCOISS" />-->
+ 	
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+</beans>
+
+web.xml
+
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="http://java.sun.com/xml/ns/j2ee" xmlns:jsp="http://java.sun.com/xml/ns/javaee/jsp"
+	xmlns:web="http://xmlns.jcp.org/xml/ns/javaee"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee https://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd http://xmlns.jcp.org/xml/ns/javaee https://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	version="2.4">
+	<display-name>coi</display-name>
+	<distributable />
+	<context-param>
+		<param-name>contextConfigLocation</param-name>
+		<param-value>
+    		/WEB-INF/coi-security.xml 
+    		/WEB-INF/coi-servlet.xml
+    	   /WEB-INF/spring-datasource.xml
+		</param-value>
+	</context-param>
+	<!--  
+	<context-param>
+		<param-name>resteasy.scan</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>resteasy.scan.providers</param-name>
+		<param-value>false</param-value>
+	</context-param>
+	<context-param>
+		<param-name>resteasy.scan.resources</param-name>
+		<param-value>false</param-value>
+	</context-param>-->
+	<context-param>
+		<param-name>resourceVersion</param-name>
+		<param-value>1</param-value>
+	</context-param>
+
+	
+	<listener>
+		<listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+	</listener>
+    
+    <listener>
+		<listener-class>sg.edu.nus.coi.resource.DBApplicationPropertiesInitializer</listener-class>
+	</listener>
+
+	
+	<filter>
+		<filter-name>MultipartFilter</filter-name>
+		<filter-class>org.springframework.web.multipart.support.MultipartFilter</filter-class>
+	</filter>
+
+	<filter>
+		<filter-name>springSecurityFilterChain</filter-name>
+		<filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+	</filter>
+
+	<filter>
+		<filter-name>EncodingFilter</filter-name>
+		<filter-class>sg.edu.nus.coi.filter.EncodingFilter</filter-class>
+		<init-param>
+			<param-name>encoding</param-name>
+			<param-value>UTF-8</param-value>
+		</init-param>
+	</filter>
+
+	<filter-mapping>
+		<filter-name>EncodingFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<filter-mapping>
+		<filter-name>MultipartFilter</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<filter-mapping>
+		<filter-name>springSecurityFilterChain</filter-name>
+		<url-pattern>/*</url-pattern>
+	</filter-mapping>
+
+	<servlet>
+		<servlet-name>coi</servlet-name>
+		<servlet-class>org.springframework.web.servlet.DispatcherServlet</servlet-class>
+		<load-on-startup>1</load-on-startup>
+	</servlet>
+
+	<servlet-mapping>
+		<servlet-name>coi</servlet-name>
+		<url-pattern>/</url-pattern>
+	</servlet-mapping>
+
+	<session-config>
+		<session-timeout>30</session-timeout>
+	</session-config>
+	<jsp-config>
+		<jsp-property-group>
+			<url-pattern>*.jsp</url-pattern>
+			<page-encoding>UTF-8</page-encoding>
+		</jsp-property-group>
+	</jsp-config>
+	<welcome-file-list>
+		<welcome-file>/login.jsp</welcome-file>
+	</welcome-file-list>
+	<error-page>
+		<error-code>403</error-code>
+		<location>/accessDenied</location>
+	</error-page>
+	<error-page>
+		<exception-type>java.lang.Exception</exception-type>
+		<location>/error.html</location>
+	</error-page>
+	<!-- <error-page> <error-code>404</error-code> <location>/error.html</location> 
+		</error-page> -->
+	  <resource-ref>
+		<description>Oracle Datasource</description>
+		<res-ref-name>jdbc/PRJCOIS</res-ref-name>
+		<res-type>javax.sql.DataSource</res-type>
+		<res-auth>Container</res-auth>
+     </resource-ref> 	
+</web-app>
